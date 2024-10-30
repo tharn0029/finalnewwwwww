@@ -6,7 +6,6 @@
     <title>Multi-Select Converter</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
-        /* [Previous styles remain the same] */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -66,12 +65,12 @@
             margin: 4px;
             border-radius: 4px;
             font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
         
-        .delete-btn {
-            margin-left: 6px;
-            color: #666;
-            cursor: pointer;
+        .selected-tag:hover {
+            background: #bbdefb;
         }
         
         textarea {
@@ -133,9 +132,12 @@
             margin-bottom: 8px;
             border-radius: 4px;
             border: 1px solid #e9ecef;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .stock-item:hover {
+            background: #e9ecef;
         }
 
         .button-group {
@@ -193,22 +195,22 @@
             <div class="selection-area">
                 <h3>Business metrics</h3>
                 <select multiple id="select1" size="8">
-<option value="quarterly_sales">Quarterly Sales</option>
-<option value="quarterly_opm">Quarterly OPM</option>
-<option value="quarterly_pbt">Quarterly PBT</option>
-<option value="quarterly_netprofit">Quarterly Net Profit</option>
-<option value="quarterly_eps">Quarterly EPS</option>
-<option value="yearly_sales">Yearly Sales</option>
-<option value="yearly_opm">Yearly OPM</option>
-<option value="yearly_pbt">Yearly PBT</option>
-<option value="yearly_netprofit">Yearly Net Profit</option>
-<option value="yearly_eps">Yearly EPS</option>
-<option value="yearly_dividend">Yearly Dividend</option>
-<option value="free_cash_flow">Free Cash Flow</option>
-<option value="current_ratio">Current Ratio</option>
-<option value="debt_to_equity_ratio">Debt to Equity Ratio</option>
-<option value="roe">ROE</option>
-<option value="pe_ratio">P/E Ratio</option>
+                    <option value="quarterly_sales">Quarterly Sales</option>
+                    <option value="quarterly_opm">Quarterly OPM</option>
+                    <option value="quarterly_pbt">Quarterly PBT</option>
+                    <option value="quarterly_netprofit">Quarterly Net Profit</option>
+                    <option value="quarterly_eps">Quarterly EPS</option>
+                    <option value="yearly_sales">Yearly Sales</option>
+                    <option value="yearly_opm">Yearly OPM</option>
+                    <option value="yearly_pbt">Yearly PBT</option>
+                    <option value="yearly_netprofit">Yearly Net Profit</option>
+                    <option value="yearly_eps">Yearly EPS</option>
+                    <option value="yearly_dividend">Yearly Dividend</option>
+                    <option value="free_cash_flow">Free Cash Flow</option>
+                    <option value="current_ratio">Current Ratio</option>
+                    <option value="debt_to_equity_ratio">Debt to Equity Ratio</option>
+                    <option value="roe">ROE</option>
+                    <option value="pe_ratio">P/E Ratio</option>
                 </select>
                 <div class="selected-items" id="selected1"></div>
             </div>
@@ -217,19 +219,19 @@
             <div class="selection-area">
                 <h3>Business metrics for Financial stocks</h3>
                 <select multiple id="select2" size="8">
-<option value="quarterly_revenue">Quarterly Revenue</option>
-<option value="quarterly_opm">Quarterly OPM</option>
-<option value="quarterly_pbt">Quarterly PBT</option>
-<option value="quarterly_netprofit">Quarterly Net Profit</option>
-<option value="quarterly_eps">Quarterly EPS</option>
-<option value="yearly_revenue">Yearly Revenue</option>
-<option value="yearly_opm">Yearly OPM</option>
-<option value="yearly_pbt">Yearly PBT</option>
-<option value="yearly_netprofit">Yearly Net Profit</option>
-<option value="yearly_eps">Yearly EPS</option>
-<option value="yearly_dividend">Yearly Dividend</option>
-<option value="roe">ROE</option>
-<option value="pe_ratio">PE Ratio</option>
+                    <option value="quarterly_revenue">Quarterly Revenue</option>
+                    <option value="quarterly_opm">Quarterly OPM</option>
+                    <option value="quarterly_pbt">Quarterly PBT</option>
+                    <option value="quarterly_netprofit">Quarterly Net Profit</option>
+                    <option value="quarterly_eps">Quarterly EPS</option>
+                    <option value="yearly_revenue">Yearly Revenue</option>
+                    <option value="yearly_opm">Yearly OPM</option>
+                    <option value="yearly_pbt">Yearly PBT</option>
+                    <option value="yearly_netprofit">Yearly Net Profit</option>
+                    <option value="yearly_eps">Yearly EPS</option>
+                    <option value="yearly_dividend">Yearly Dividend</option>
+                    <option value="roe">ROE</option>
+                    <option value="pe_ratio">PE Ratio</option>
                 </select>
                 <div class="selected-items" id="selected2"></div>
             </div>
@@ -247,7 +249,8 @@
                 Array.from(select.selectedOptions).forEach(option => {
                     const tag = document.createElement('span');
                     tag.className = 'selected-tag';
-                    tag.innerHTML = `${option.text} <span class="delete-btn" onclick="removeSelection('${selectId}', '${option.value}')">×</span>`;
+                    tag.textContent = option.text;
+                    tag.onclick = () => removeSelection(selectId, option.value);
                     selectedDiv.appendChild(tag);
                 });
             });
@@ -270,7 +273,8 @@
             const list = document.getElementById('stockList');
             const li = document.createElement('li');
             li.className = 'stock-item';
-            li.innerHTML = `${stockName} <span class="delete-btn" onclick="this.parentElement.remove()">×</span>`;
+            li.textContent = stockName;
+            li.onclick = () => li.remove();
             list.appendChild(li);
         }
 
@@ -295,8 +299,8 @@
         handleSelection('select1', 'selected1');
         handleSelection('select2', 'selected2');
 
-        // JSON to Excel conversion functions
-        function log(message) {
+        // [Rest of the JavaScript code remains unchanged...]
+		 function log(message) {
             const logElement = document.getElementById('log');
             logElement.textContent += message + '\n';
             console.log(message);
