@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Select JSON Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .selection-area {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+
+        .converter-area {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .selected-items {
+            min-height: 100px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .selected-tag {
+            display: inline-block;
+            background: #e0e0e0;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="selection-area">
+            <h2>Selection Area 1</h2>
+            <select id="select1" multiple size="5">
+                <option value="option1">Option 1</option>
+                <option value="option2">Option 2</option>
+                <option value="option3">Option 3</option>
+                <option value="option4">Option 4</option>
+                <option value="option5">Option 5</option>
+            </select>
+            <div class="selected-items" id="selected1"></div>
+        </div>
+
+        <div class="selection-area">
+            <h2>Selection Area 2</h2>
+            <select id="select2" multiple size="5">
+                <option value="option1">Option 1</option>
+                <option value="option2">Option 2</option>
+                <option value="option3">Option 3</option>
+                <option value="option4">Option 4</option>
+                <option value="option5">Option 5</option>
+            </select>
+            <div class="selected-items" id="selected2"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="converter-area">
+            <h2>JSON to Excel Converter</h2>
+            <textarea id="jsonInput" placeholder="Paste your numbered JSON data here..."></textarea>
+            <button onclick="convertToExcel()">Convert to Excel</button>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Selection functionality
+        function setupSelect(selectId, selectedId) {
+            const select = document.getElementById(selectId);
+            const selectedDiv = document.getElementById(selectedId);
+            const selectedItems = new Set();
+
+            select.addEventListener('change', () => {
+                selectedItems.clear();
+                Array.from(select.selectedOptions).forEach(option => {
+                    selectedItems.add(option.value);
+                });
+                updateSelectedDisplay();
+            });
+
+            function updateSelectedDisplay() {
+                selectedDiv.innerHTML = '';
+                selectedItems.forEach(item => {
+                    const tag = document.createElement('span');
+                    tag.className = 'selected-tag';
+                    tag.textContent = item;
+                    tag.onclick = () => {
+                        selectedItems.delete(item);
+                        Array.from(select.options).find(opt => opt.value === item).selected = false;
+                        updateSelectedDisplay();
+                    };
+                    selectedDiv.appendChild(tag);
+                });
+            }
+        }
+
+        setupSelect('select1', 'selected1');
+        setupSelect('select2', 'selected2');
+
+        // JSON to Excel conversion functionality
+        function log(message) {
+            const logElement = document.getElementById('log');
+            logElement.textContent += message + '\n';
+            console.log(message);
+        }
+
+        function parseGroupedDataSets(input) {
+            log('Parsing grouped data sets...');
+            const regex = /(\d+)\[(.*?)\]\[(.*?)\]/g;
+            const dataSets = [];
+            let match;
+            while ((match = regex.exec(input)) !== null) {
+                const groupNumber = parseInt(match[1]);
+                const periods = JSON.parse('[' + match[2] + ']');
+                const values = JSON.parse('[' + match[3] + ']');
+                dataSets.push({groupNumber, periods, values});
+            }
+            log(`Found ${dataSets.length} grouped data sets`);
+            return dataSets;
+        }
+
+        function convertToNumber(value) {
+            if (typeof value === 'number') return value;
+            if (typeof value !== 'string') return null;
+            const numValue = parseFloat(value.replace(/[,\$%]/g, ''));
+            return isNaN(numValue) ? null : numValue;
+        }
+
+        function addCalculationsToGroup(ws_data, columnSalesData, currentGroup) {
+            if (Object.keys(columnSalesData).length === 0) return;
+
+            const periods = Object.keys(columnSalesData);
+
+            if (currentGroup === 1 || currentGroup === 3) {
+                const maxRows = Math.max(...Object.values(columnSalesData).map(sales => sales.length));
+                for (let i = 0; i < maxRows; i++) {
+                    const rowData = ['Market Share ' + (i + 1)];
+                    periods.forEach(period => {
+                        const totalSales = columnSalesData[period].reduce((sum, sale) => sum + (sale || 0), 0);
+                        const marketShare = columnSalesData[period][i] && totalSales ? 
+                            columnSalesData[period][i] / totalSales : null;
+                        rowData.push(marketShare);
+                    });
+                    ws_data.push(rowData);
+                }
+            }
+        }
+
+        function convertToExcel() {
+            log('Starting conversion process...');
+            const jsonInput = document.getElementById('jsonInput').value;
+            let dataSets;
+            try {
+                dataSets = parseGroupedDataSets(jsonInput);
+                if (dataSets.length === 0) {
+                    throw new Error('No valid grouped data sets found');
+                }
+            } catch (error) {
+                log('Error parsing input: ' + error.message);
+                alert('Invalid input. Please check your data and try again.');
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.book_new();
+                const ws_data = [];
+                let currentGroup = null;
+                let columnSalesData = {};
+
+                dataSets.forEach(dataSet => {
+                    const filteredPeriods = dataSet.periods.filter(period => !period.toLowerCase().includes('ttm')).reverse();
+                    const filteredValues = dataSet.values.filter((_, index) => !dataSet.periods[index].toLowerCase().includes('ttm')).reverse();
+
+                    if (currentGroup !== dataSet.groupNumber) {
+                        if (ws_data.length > 0) {
+                            addCalculationsToGroup(ws_data, columnSalesData, currentGroup);
+                            ws_data.push([]);
+                        }
+                        ws_data.push(['Group ' + dataSet.groupNumber, ...filteredPeriods.slice(1)]);
+                        currentGroup = dataSet.groupNumber;
+                        columnSalesData = {};
+                        filteredPeriods.slice(1).forEach(period => {
+                            columnSalesData[period] = [];
+                        });
+                    }
+
+                    const alignedData = filteredValues.slice(1).map(convertToNumber);
+                    
+                    for (let i = 0; i < alignedData.length; i++) {
+                        const value = alignedData[i];
+                        if (filteredValues[0].toLowerCase().includes('sales') && value !== null) {
+                            columnSalesData[filteredPeriods[i + 1]].push(value);
+                        }
+                    }
+
+                    ws_data.push([filteredValues[0], ...alignedData]);
+                });
+
+                addCalculationsToGroup(ws_data, columnSalesData, currentGroup);
+
+                const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                for (let R = range.s.r; R <= range.e.r; ++R) {
+                    const firstCellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+                    if (ws[firstCellAddress] && ws[firstCellAddress].v && ws[firstCellAddress].v.toString().startsWith('Group')) {
+                        for (let C = range.s.c; C <= range.e.c; ++C) {
+                            const address = XLSX.utils.encode_cell({ r: R, c: C });
+                            if (ws[address]) {
+                                ws[address].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+                            }
+                        }
+                    } else if (ws[firstCellAddress] && ws[firstCellAddress].v) {
+                        ws[firstCellAddress].s = { font: { bold: true } };
+                    }
+                }
+
+                XLSX.utils.book_append_sheet(wb, ws, "Grouped Data");
+                log('Added sheet: Grouped Data');
+
+                XLSX.writeFile(wb, "grouped_data_with_calculations.xlsx");
+                log('Excel file created and download initiated.');
+            } catch (error) {
+                log('Error creating Excel file: ' + error.message);
+                alert('An error occurred while creating the Excel file. Please check the log for details.');
+            }
+        }
+    </script>
+</body>
+</html>
